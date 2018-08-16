@@ -27,7 +27,8 @@ public class UDTEventHandler : MonoBehaviour, IUserDefinedTargetEventHandler
     /// that is instantiated for augmentations of new User-Defined Targets.
     /// </summary>
     public ImageTargetBehaviour ImageTargetTemplate;
-public GameObject textobj;
+    
+    public GameObject textobj;
 public GameObject musicobj;
     public int LastTargetIndex
     {
@@ -54,6 +55,10 @@ private const string OXFORD_API_KEY = "63c0e519bf3923479a4f666f1d27e947";
 public GameObject status;
 public string txt;
 TextMesh tm;
+    GameObject tempObj;
+    rectangle obj = null;
+    public byte[] bytes;
+
     #region PRIVATE_MEMBERS
     const int MAX_TARGETS = 5;
     UserDefinedTargetBuildingBehaviour m_TargetBuildingBehaviour;
@@ -95,6 +100,8 @@ TextMesh tm;
         textobj = GameObject.Find("wordobj");
         musicobj = GameObject.Find("music");
         status = GameObject.Find("status");
+        tempObj = GameObject.Find("TargetBuilderCanvas");
+        obj = tempObj.GetComponent<rectangle>();
      //   tm = textobj.GetComponent<TextMesh>();
     //tm.text = "hello";
     //textobj.SetActive(false);
@@ -215,11 +222,13 @@ TextMesh tm;
                 StartCoroutine(FadeOutQualityDialog());
             }
         }*/
-        
-            StartCoroutine("TakePic");
+     //   print(obj.tempw);
+     StartCoroutine("TakePic");
+      //  obj.HandleUnitSelection();  
     }
 IEnumerator TakePic()
 {
+        
 string filePath;
 GameObject button = GameObject.Find("BuildButton");
 button.SetActive(false);
@@ -247,9 +256,35 @@ Meter.SetActive(false);
             print("**********Photo Done***********");
             status.GetComponent<Text>().text +="photo taken\n";
 			}
-            button.SetActive(true);
-            Meter.SetActive(true);
-             StartCoroutine("UploadImage");
+        if (obj.x != 0 && obj.y != 0 && obj.width != 0 && obj.height != 0)
+        {
+            Texture2D snap = new Texture2D(Screen.height, Screen.width);
+            snap.LoadImage(imageByteArray);
+            Color[] pix = snap.GetPixels(obj.x, obj.y, obj.width, obj.height);
+            Texture2D destTex = new Texture2D(obj.width, obj.height);
+            destTex.SetPixels(pix);
+            destTex.Apply();
+            bytes = destTex.EncodeToPNG();
+            if (Application.isMobilePlatform)
+            {
+                File.WriteAllBytes(Application.persistentDataPath + "/image1.png", bytes);
+            }
+            else
+            {
+                 File.WriteAllBytes(Application.dataPath + "/Images/" + "image1.png", bytes);
+            }
+
+            yield return new WaitForSeconds(1.5f);
+        }
+        else
+        {
+            bytes = imageByteArray;
+        }
+        status.GetComponent<Text>().text += "photo taken\n";
+
+        button.SetActive(true);
+        Meter.SetActive(true);
+        StartCoroutine("UploadImage");
             // StartCoroutine("MicrosoftSearch");
 }
  IEnumerator UploadImage(){
@@ -258,7 +293,7 @@ Meter.SetActive(false);
 		string url = "https://api.cloudinary.com/v1_1/" + CLOUD_NAME + "/auto/upload/";
 
 		WWWForm myForm = new WWWForm ();
-		myForm.AddBinaryData ("file",imageByteArray);
+		myForm.AddBinaryData ("file",bytes);
 		myForm.AddField ("upload_preset", UPLOAD_PRESET_NAME);
 
 		WWW www = new WWW(url,myForm);
